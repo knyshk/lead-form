@@ -184,7 +184,7 @@
           input = document.createElement('input');
           input.type = (f.type === 'email' || f.type === 'tel') ? f.type : 'text';
           if (f.type === 'tel') {
-            input.pattern = '[0-9+\\-\\s()]{7,20}';
+            input.pattern = '[0-9+()\\s-]{7,20}';
             input.title = 'Enter a valid phone number';
           }
         }
