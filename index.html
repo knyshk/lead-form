@@ -121,6 +121,8 @@
     <p id="loadingNote">Loading form…</p>
     <form id="leadForm" style="display:none;">
       <div id="fieldsContainer"></div>
+      <!-- Honeypot: invisible to real people, but bots that auto-fill every field will fill this too -->
+      <input type="text" id="hp_field" name="hp_field" style="position:absolute; left:-9999px;" tabindex="-1" autocomplete="off">
       <button type="submit" id="submitBtn">Send details</button>
     </form>
 
@@ -129,9 +131,10 @@
 
   <script>
     // 👇 Paste your PUBLIC Apps Script Web App URL here (the "Anyone" access one)
-    const SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxhjPPrsvKCj_8S42Z9GKFMQ3LzGhuIvVTBnt8k2V8jlY6mh0P1Yg_EWGCJDYdgl0U_/exec";
 
     let currentFields = [];
+    const pageLoadedAt = Date.now();
     const form = document.getElementById('leadForm');
     const btn = document.getElementById('submitBtn');
     const resultEl = document.getElementById('result');
@@ -200,6 +203,8 @@
       resultEl.className = '';
 
       const payload = { action: 'submit' };
+      payload.hp_field = document.getElementById('hp_field').value;
+      payload.loadedAt = pageLoadedAt;
       currentFields.forEach(function (f) {
         const el = document.querySelector('[data-field-label="' + f.label.replace(/"/g, '\\"') + '"]');
         payload[f.label] = el ? el.value : '';
