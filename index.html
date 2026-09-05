@@ -29,10 +29,7 @@
     padding: 48px 20px;
   }
 
-  main {
-    width: 100%;
-    max-width: 460px;
-  }
+  main { width: 100%; max-width: 460px; }
 
   h1 {
     font-family: 'Fraunces', serif;
@@ -50,11 +47,7 @@
     max-width: 38ch;
   }
 
-  hr {
-    border: none;
-    border-top: 1px solid var(--rule);
-    margin: 0 0 32px;
-  }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 0 0 32px; }
 
   label {
     display: block;
@@ -66,7 +59,7 @@
 
   .field { margin-bottom: 22px; }
 
-  input {
+  input, select, textarea {
     width: 100%;
     font-family: 'Inter', sans-serif;
     font-size: 16px;
@@ -79,11 +72,10 @@
     transition: border-color 0.15s ease;
   }
 
-  input:focus {
-    border-bottom-color: var(--accent);
-  }
+  textarea { min-height: 70px; resize: vertical; }
 
-  input::placeholder { color: #A9A192; }
+  input:focus, select:focus, textarea:focus { border-bottom-color: var(--accent); }
+  input::placeholder, textarea::placeholder { color: #A9A192; }
 
   button {
     width: 100%;
@@ -115,12 +107,9 @@
   #result.show { display: block; }
   #result.ok { background: #EAF2EC; color: var(--accent-dark); }
   #result.err { background: #F6E9E6; color: #8C3A2C; }
+  #result .id { font-family: 'Fraunces', serif; font-weight: 600; font-size: 17px; }
 
-  #result .id {
-    font-family: 'Fraunces', serif;
-    font-weight: 600;
-    font-size: 17px;
-  }
+  #loadingNote { color: var(--ink-soft); font-size: 14px; }
 </style>
 </head>
 <body>
@@ -129,19 +118,9 @@
     <p class="lede">Tell us a little about what you need, and we'll get back to you shortly.</p>
     <hr>
 
-    <form id="leadForm">
-      <div class="field">
-        <label for="name">Full name</label>
-        <input type="text" id="name" placeholder="Jordan Patel" required>
-      </div>
-      <div class="field">
-        <label for="phone">Phone number</label>
-        <input type="tel" id="phone" placeholder="+91 98765 43210" required>
-      </div>
-      <div class="field">
-        <label for="email">Email (optional)</label>
-        <input type="email" id="email" placeholder="jordan@email.com">
-      </div>
+    <p id="loadingNote">Loading form…</p>
+    <form id="leadForm" style="display:none;">
+      <div id="fieldsContainer"></div>
       <button type="submit" id="submitBtn">Send details</button>
     </form>
 
@@ -150,11 +129,65 @@
 
   <script>
     // 👇 Paste your PUBLIC Apps Script Web App URL here (the "Anyone" access one)
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxhjPPrsvKCj_8S42Z9GKFMQ3LzGhuIvVTBnt8k2V8jlY6mh0P1Yg_EWGCJDYdgl0U_/exec";
+    const SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
 
+    let currentFields = [];
     const form = document.getElementById('leadForm');
     const btn = document.getElementById('submitBtn');
     const resultEl = document.getElementById('result');
+    const loadingNote = document.getElementById('loadingNote');
+
+    function loadFields() {
+      fetch(SCRIPT_URL + '?action=fields')
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (res.success && res.fields.length > 0) {
+            currentFields = res.fields;
+            renderFields(currentFields);
+            loadingNote.style.display = 'none';
+            form.style.display = 'block';
+          } else {
+            loadingNote.textContent = 'This form has no questions configured yet.';
+          }
+        })
+        .catch(function () {
+          loadingNote.textContent = 'Could not load the form. Please refresh the page.';
+        });
+    }
+
+    function renderFields(fields) {
+      const container = document.getElementById('fieldsContainer');
+      container.innerHTML = '';
+      fields.forEach(function (f) {
+        const wrap = document.createElement('div');
+        wrap.className = 'field';
+
+        const label = document.createElement('label');
+        label.textContent = f.label + (f.required ? ' *' : '');
+        wrap.appendChild(label);
+
+        let input;
+        if (f.type === 'textarea') {
+          input = document.createElement('textarea');
+        } else if (f.type === 'dropdown') {
+          input = document.createElement('select');
+          f.options.forEach(function (opt) {
+            const o = document.createElement('option');
+            o.value = opt;
+            o.textContent = opt;
+            input.appendChild(o);
+          });
+        } else {
+          input = document.createElement('input');
+          input.type = (f.type === 'email' || f.type === 'tel') ? f.type : 'text';
+        }
+
+        input.dataset.fieldLabel = f.label;
+        if (f.required) input.required = true;
+        wrap.appendChild(input);
+        container.appendChild(wrap);
+      });
+    }
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -162,15 +195,16 @@
       btn.textContent = 'Sending…';
       resultEl.className = '';
 
+      const payload = { action: 'submit' };
+      currentFields.forEach(function (f) {
+        const el = document.querySelector('[data-field-label="' + f.label.replace(/"/g, '\\"') + '"]');
+        payload[f.label] = el ? el.value : '';
+      });
+
       fetch(SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'submit',
-          name: document.getElementById('name').value,
-          phone: document.getElementById('phone').value,
-          email: document.getElementById('email').value
-        })
+        body: JSON.stringify(payload)
       })
         .then(function (r) { return r.json(); })
         .then(function (res) {
@@ -178,14 +212,12 @@
             resultEl.innerHTML = "You're on our list. Your reference ID is <span class=\"id\">" + res.customerId + "</span>. We'll be in touch soon.";
             resultEl.className = 'show ok';
             form.reset();
-            btn.textContent = 'Send details';
-            btn.disabled = false;
           } else {
             resultEl.textContent = 'Something went wrong: ' + res.error;
             resultEl.className = 'show err';
-            btn.textContent = 'Send details';
-            btn.disabled = false;
           }
+          btn.textContent = 'Send details';
+          btn.disabled = false;
         })
         .catch(function (err) {
           resultEl.textContent = 'Something went wrong: ' + err;
@@ -194,6 +226,8 @@
           btn.disabled = false;
         });
     });
+
+    loadFields();
   </script>
 </body>
 </html>
