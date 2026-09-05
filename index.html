@@ -129,7 +129,7 @@
 
   <script>
     // 👇 Paste your PUBLIC Apps Script Web App URL here (the "Anyone" access one)
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxhjPPrsvKCj_8S42Z9GKFMQ3LzGhuIvVTBnt8k2V8jlY6mh0P1Yg_EWGCJDYdgl0U_/exec";
+    const SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
 
     let currentFields = [];
     const form = document.getElementById('leadForm');
@@ -180,6 +180,10 @@
         } else {
           input = document.createElement('input');
           input.type = (f.type === 'email' || f.type === 'tel') ? f.type : 'text';
+          if (f.type === 'tel') {
+            input.pattern = '[0-9+\\-\\s()]{7,20}';
+            input.title = 'Enter a valid phone number';
+          }
         }
 
         input.dataset.fieldLabel = f.label;
